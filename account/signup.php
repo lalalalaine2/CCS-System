@@ -73,6 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $otherErr = "Department is required for staff!";
         }
 
+        // Add this new validation
+        $identifierValidation = $userObj->validateIdentifier($identifier, $role_id);
+        if (!$identifierValidation['valid']) {
+            $identifierErr = $identifierValidation['message'];
+            throw new Exception($identifierErr);
+        }
+
         // Check if there are validation errors
         if (!empty($first_nameErr) || !empty($last_nameErr) || !empty($usernameErr) || !empty($passwordErr) || !empty($role_idErr) || !empty($emailErr) || !empty($otherErr)) {
             throw new Exception("Validation errors occurred.");
@@ -238,6 +245,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const identifierInput = document.getElementById('identifier');
+    const roleSelect = document.getElementById('role');
+    const identifierError = document.createElement('div');
+    identifierError.className = 'text-danger mt-1';
+    identifierInput.parentNode.appendChild(identifierError);
+
+    function validateIdentifierFormat(identifier, roleId) {
+        const studentPattern = /^\d{4}-\d{5}$/;
+        const staffPattern = /^\d{9}$/;
+
+        if (roleId == '3') { // Student
+            if (!studentPattern.test(identifier)) {
+                return 'Student ID must be in 0000-00000 format';
+            }
+        } else if (roleId == '2') { // Staff
+            if (!staffPattern.test(identifier)) {
+                return 'Staff ID must be 9 digits without spaces or dashes';
+            }
+        }
+        return '';
+    }
+
+    function formatIdentifier(input, roleId) {
+        let value = input.value.replace(/\D/g, ''); // Remove non-digits
+
+        if (roleId == '3' && value.length >= 4) {
+            // Format as 0000-00000 for students
+            value = value.substr(0, 4) + '-' + value.substr(4, 5);
+        }
+        
+        // Limit length based on role
+        if (roleId == '3') {
+            value = value.substr(0, 10); // 9 digits + 1 dash
+        } else if (roleId == '2') {
+            value = value.substr(0, 9); // 9 digits
+        }
+
+        input.value = value;
+    }
+
+    // Add event listeners
+    identifierInput.addEventListener('input', function() {
+        formatIdentifier(this, roleSelect.value);
+        const error = validateIdentifierFormat(this.value, roleSelect.value);
+        identifierError.textContent = error;
+    });
+
+    roleSelect.addEventListener('change', function() {
+        identifierInput.value = ''; // Clear identifier when role changes
+        identifierError.textContent = '';
+    });
+});
+</script>
 <?php include_once '../includes/_footer.php'; ?>
 </body>
 
