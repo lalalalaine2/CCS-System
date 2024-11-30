@@ -10,6 +10,7 @@ class User
     public $lastname = '';
     public $course = '';
     public $department = '';
+    public $year_level = '';
 
     public $email = '';
 
@@ -17,6 +18,12 @@ class User
 
     const STUDENT_ID_PATTERN = '/^\d{4}-\d{5}$/';
     const STAFF_ID_PATTERN = '/^\d{9}$/';
+    const YEAR_LEVELS = [
+        'First Year',
+        'Second Year',
+        'Third Year',
+        'Fourth Year'
+    ];
 
     function __construct()
     {
@@ -26,8 +33,8 @@ class User
     public function store()
     {
         try {
-            $sql = "INSERT INTO user (identifier, firstname, middlename, lastname, email, course, department) 
-                    VALUES (:identifier, :firstname, :middlename, :lastname, :email, :course, :department)";
+            $sql = "INSERT INTO user (identifier, firstname, middlename, lastname, email, course, department, year_level) 
+                    VALUES (:identifier, :firstname, :middlename, :lastname, :email, :course, :department, :year_level)";
 
             $query = $this->db->connect()->prepare($sql);
 
@@ -38,6 +45,7 @@ class User
             $query->bindParam(':email', $this->email, PDO::PARAM_STR);
             $query->bindParam(':course', $this->course, PDO::PARAM_STR);
             $query->bindParam(':department', $this->department, PDO::PARAM_STR);
+            $query->bindParam(':year_level', $this->year_level);
 
             if ($query->execute()) {
                 // Return the ID of the newly inserted record
@@ -84,19 +92,18 @@ class User
                 }
             }
 
-            // Check if ID exists for the same role
+            // Check if ID exists for any role
             $sql = "SELECT u.identifier, a.role_id 
                    FROM user u 
                    JOIN account a ON u.id = a.user_id 
-                   WHERE u.identifier = :identifier AND a.role_id = :role_id";
+                   WHERE u.identifier = :identifier";
 
             $query = $this->db->connect()->prepare($sql);
             $query->bindParam(':identifier', $identifier);
-            $query->bindParam(':role_id', $role_id);
             $query->execute();
 
-            if ($query->fetch()) {
-                $roleType = ($role_id == 3) ? 'student' : 'staff';
+            if ($result = $query->fetch()) {
+                $roleType = ($result['role_id'] == 3) ? 'student' : 'staff';
                 return ['valid' => false, 'message' => "This ID is already registered as a {$roleType}"];
             }
 
