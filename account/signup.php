@@ -5,29 +5,54 @@ require_once '../tools/functions.php';
 require_once '../classes/user.class.php';
 require_once '../classes/account.class.php';
 require_once '../classes/role.class.php';
+require_once '../classes/course.class.php';
+require_once '../classes/department.class.php';
 
 session_start();
 $userObj = new User();
 $accountObj = new Account();
 $roleObj = new Role();
+$courseObj = new Course();
+$departmentObj = new Department();
 $roles = $roleObj->renderAllRoles(); // Fetch all roles for dropdown
+$courses = $courseObj->getAllCourses();
+$departments = $departmentObj->getAllDepartments();
 
-// Initialize variables
-$identifier = $first_name = $middle_name = $last_name = $username = $password = $role_id = $email = $other = '';
-$identifierErr = $first_nameErr = $middle_nameErr = $last_nameErr = $usernameErr = $passwordErr = $role_idErr = $emailErr = $otherErr = '';
+// Initialize all variables
+$identifier = $first_name = $middle_name = $last_name = $username = $password = $role_id = $email = '';
+$identifierErr = $first_nameErr = $middle_nameErr = $last_nameErr = $usernameErr = $passwordErr = $role_idErr = $emailErr = '';
+
+// Initialize course and department variables
+$course = $department = '';
+$courseErr = $departmentErr = '';
+
+// Initialize error variable
+$error = '';
+
+// Add this with your other variable initializations at the top
+$year_level = '';
+$year_levelErr = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         // Clean and validate input
-        $identifier = clean_input($_POST['identifier']);
-        $first_name = clean_input($_POST['firstname']);
-        $middle_name = clean_input($_POST['middlename']);
-        $last_name = clean_input($_POST['lastname']);
-        $username = clean_input($_POST['username']);
-        $password = clean_input($_POST['password']);
-        $role_id = clean_input($_POST['role']);
-        $email = clean_input($_POST['email']);
-        $other = clean_input($_POST['other']);
+        $identifier = clean_input($_POST['identifier'] ?? '');
+        $first_name = clean_input($_POST['firstname'] ?? '');
+        $middle_name = clean_input($_POST['middlename'] ?? '');
+        $last_name = clean_input($_POST['lastname'] ?? '');
+        $username = clean_input($_POST['username'] ?? '');
+        $password = clean_input($_POST['password'] ?? '');
+        $role_id = clean_input($_POST['role'] ?? '');
+        $email = clean_input($_POST['email'] ?? '');
+        
+        // Handle course/department based on role
+        if ($role_id == 3) { // Student
+            $course = clean_input($_POST['course'] ?? '');
+            $department = ''; // Clear department for students
+        } else if ($role_id == 2) { // Staff
+            $department = clean_input($_POST['department'] ?? '');
+            $course = ''; // Clear course for staff
+        }
 
         // Validate first name
         if (empty($first_name)) {
@@ -67,10 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Validate course/department based on role
-        if ($role_id == 3 && empty($other)) { // Assuming '3' is the role ID for students
-            $otherErr = "Course is required for students!";
-        } elseif ($role_id == 2 && empty($other)) { // Assuming '2' is the role ID for staff
-            $otherErr = "Department is required for staff!";
+        if ($role_id == 3 && empty($course)) { // Assuming '3' is the role ID for students
+            $courseErr = "Course is required for students!";
+        } elseif ($role_id == 2 && empty($department)) { // Assuming '2' is the role ID for staff
+            $departmentErr = "Department is required for staff!";
         }
 
         // Add this new validation
@@ -88,8 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Check if there are validation errors
-        if (!empty($first_nameErr) || !empty($last_nameErr) || !empty($usernameErr) || !empty($passwordErr) || !empty($role_idErr) || !empty($emailErr) || !empty($otherErr)) {
+        if (!empty($first_nameErr) || !empty($last_nameErr) || !empty($usernameErr) || !empty($passwordErr) || !empty($role_idErr) || !empty($emailErr) || !empty($courseErr) || !empty($departmentErr)) {
             throw new Exception("Validation errors occurred.");
+        }
+
+        // Add year level validation for students
+        if ($role_id == 3) { // Student
+            $year_level = clean_input($_POST['year_level'] ?? '');
+            if (empty($year_level)) {
+                throw new Exception("Please select your year level");
+            }
+            
+            // Validate year level options
+            $valid_year_levels = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
+            if (!in_array($year_level, $valid_year_levels)) {
+                throw new Exception("Invalid year level selected");
+            }
         }
 
         // Store data in the User model
@@ -101,12 +140,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Assign course or department based on role
         if ($role_id == 3) {
-            $userObj->course = $other;
+            $userObj->course = $course;
         } elseif ($role_id == 2) {
-            $userObj->department = $other;
+            $userObj->department = $department;
         }
 
-
+        if ($role_id == 3) { // Student
+            $year_level = clean_input($_POST['year_level'] ?? '');
+            if (empty($year_level)) {
+                throw new Exception("Year level is required for students");
+            }
+            if (!in_array($year_level, User::YEAR_LEVELS)) {
+                throw new Exception("Invalid year level selected");
+            }
+        }
 
         // Save the user and get the inserted ID
         $userId = $userObj->store();
@@ -141,111 +188,127 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <link rel="stylesheet" href="../css/signup.css">
 <body class="d-flex align-items-center justify-content-center container" style="height: 100vh">
-<main class="form-signup w-75 rounded">
-    <div class="card">
+<main class="container py-4">
+    <div class="card" style="max-width: 1000px; margin: 0 auto; border-radius: 15px;">
         <div class="card-body">
-            <div class="card-header">
-                <div class="d-flex justify-content-center align-items-center logo">
-                    <img class="text-center" src="../img/ccs_logo.png" alt="" width="150" height="150">
+            <div class="text-center mb-4" style="padding-top: 20px;">
+                <div class="d-flex justify-content-center align-items-center logo" style="min-height: 120px;">
+                    <img class="text-center" src="../img/ccs_logo.png" alt="" width="100" height="100" style="object-fit: contain;">
                 </div>
-
+                <p class="text-center m-auto" style="margin-top: 15px !important;">COLLEGE OF COMPUTING STUDIES OFFICIAL RANKING SYSTEM</p>
+                <h3 class="card-title mt-3">Sign Up</h3>
             </div>
-            <p class="text-center w-50 m-auto p-1">COLLEGE OF COMPUTING STUDIES OFFICIAL RANKING SYSTEM</p>
-            <h3 class="card-title">
-                Sign Up
-            </h3>
             <hr>
-            <form class="row g-3" action="signup.php" method="post">
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">ID Number</label>
-                    <input type="text" class="form-control" id="identifier" name="identifier"
-                           value="<?= htmlspecialchars($identifier) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
+            <form class="row g-3 needs-validation" method="POST" novalidate>
+                <!-- Role and Course/Department Selection in one row -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="role" class="form-label">Role*</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="" selected disabled>Select your role</option>
+                            <?php foreach ($roles as $r): ?>
+                                <option value="<?= $r['id'] ?>" <?= ($role_id == $r['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($r['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">First name</label>
-                    <input type="text" class="form-control" id="firstname" name="firstname"
-                           value="<?= htmlspecialchars($first_name) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Middle name</label>
-                    <input type="text" class="form-control" id="middlename" name="middlename"
-                           value="<?= htmlspecialchars($middle_name) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Last name</label>
-                    <input type="text" class="form-control" id="lastname" name="lastname"
-                           value="<?= htmlspecialchars($middle_name) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
-                </div>
 
-
-                <div class="col-md-6">
-                    <label for="validationCustom01" class="form-label">Course/Department</label>
-                    <input type="text" class="form-control" id="other" name="other"
-                           value="<?= htmlspecialchars($other) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
+                    <!-- Course Selection (for students) -->
+                    <div class="col-md-6" id="courseSection" style="display: none;">
+                        <label for="course" class="form-label">Course*</label>
+                        <select class="form-select" id="course" name="course">
+                            <option value="" selected disabled>Select your course</option>
+                            <?php foreach ($courses as $course): ?>
+                                <option value="<?= htmlspecialchars($course['course_name']) ?>">
+                                    <?= htmlspecialchars($course['course_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        
+                        <!-- Add year level here -->
+                        <div class="mt-3">
+                            <label for="year_level" class="form-label">Year Level*</label>
+                            <select class="form-select" id="year_level" name="year_level">
+                                <option value="" selected disabled>Select your year level</option>
+                                <option value="First Year">First Year</option>
+                                <option value="Second Year">Second Year</option>
+                                <option value="Third Year">Third Year</option>
+                                <option value="Fourth Year">Fourth Year</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <div class="col-md-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email"
-                           value="<?= htmlspecialchars($email) ?>" required>
-                    <small class="form-text text-muted">Use your WMSU email: username@wmsu.edu.ph</small>
-                    <div class="text-danger" id="emailError"></div>
-                </div>
-
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Role</label>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="" disabled selected>Select a role</option>
-                        <?php
-                        foreach ($roles as $r) {
-                            $isSelected = ($role_id == $r['name']) ? 'selected' : '';
-                            echo "<option value=\"{$r['id']}\" $isSelected>{$r['name']}</option>";
-                        }
-                        ?>
-                    </select>
-                    <div class="valid-feedback">
-                        Looks good!
+                    <!-- Department Selection (for staff) -->
+                    <div class="col-md-6" id="departmentSection" style="display: none;">
+                        <label for="department" class="form-label">Department*</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="" selected disabled>Select your department</option>
+                            <?php foreach ($departments as $dept): ?>
+                                <option value="<?= htmlspecialchars($dept['department_name']) ?>">
+                                    <?= htmlspecialchars($dept['department_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
 
-                <hr>
-
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" name="username"
-                           value="<?= htmlspecialchars($username) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
+                <!-- Personal Information in one row -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="identifier" class="form-label">ID Number*</label>
+                        <input type="text" class="form-control" id="identifier" name="identifier" 
+                               value="<?= htmlspecialchars($identifier) ?>" required>
+                        <div class="text-danger" id="identifierError"></div>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="email" class="form-label">Email*</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="<?= htmlspecialchars($email) ?>" required>
+                        <small class="form-text text-muted">Use your WMSU email: username@wmsu.edu.ph</small>
+                        <div class="text-danger" id="emailError"></div>
                     </div>
                 </div>
 
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password"
-                           required>
-                    <div class="valid-feedback">
-                        Looks good!
+                <!-- Name fields in one row -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="firstname" class="form-label">First Name*</label>
+                        <input type="text" class="form-control" id="firstname" name="firstname" 
+                               value="<?= htmlspecialchars($first_name) ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="middlename" class="form-label">Middle Name</label>
+                        <input type="text" class="form-control" id="middlename" name="middlename" 
+                               value="<?= htmlspecialchars($middle_name) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="lastname" class="form-label">Last Name*</label>
+                        <input type="text" class="form-control" id="lastname" name="lastname" 
+                               value="<?= htmlspecialchars($last_name) ?>" required>
                     </div>
                 </div>
 
-                <div class="text-end">
-                    <button class="btn btn-primary w-25 py-2" type="submit">Sign Up</button>
-                    <div class="text-end mt-2" style="margin: 0">Already have an account? <a href="loginwcss.php"> Sign in</a></div>
+                <!-- Account Information in one row -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="username" class="form-label">Username*</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="<?= htmlspecialchars($username) ?>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Password*</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <button class="btn btn-primary w-100 py-2" type="submit">Sign Up</button>
+                        <div class="text-center mt-2">
+                            Already have an account? <a href="loginwcss.php">Sign in</a>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -253,12 +316,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const identifierInput = document.getElementById('identifier');
+    // Element declarations
     const roleSelect = document.getElementById('role');
-    const identifierError = document.createElement('div');
-    identifierError.className = 'text-danger mt-1';
-    identifierInput.parentNode.appendChild(identifierError);
+    const courseSection = document.getElementById('courseSection');
+    const departmentSection = document.getElementById('departmentSection');
+    const courseSelect = document.getElementById('course');
+    const departmentSelect = document.getElementById('department');
+    const yearLevelSelect = document.getElementById('year_level');
+    const identifierInput = document.getElementById('identifier');
+    const identifierError = document.getElementById('identifierError');
+    const emailInput = document.getElementById('email');
+    const emailError = document.getElementById('emailError');
 
+    // Form field display function
+    function updateFormFields() {
+        const selectedRole = roleSelect.value;
+        
+        // Hide all sections first
+        courseSection.style.display = 'none';
+        departmentSection.style.display = 'none';
+        courseSelect.required = false;
+        departmentSelect.required = false;
+        
+        if (yearLevelSelect) {
+            yearLevelSelect.required = false;
+        }
+
+        // Show relevant section based on role
+        if (selectedRole === '3') { // Student
+            courseSection.style.display = 'block';
+            courseSelect.required = true;
+            if (yearLevelSelect) {
+                yearLevelSelect.required = true;
+            }
+        } else if (selectedRole === '2') { // Staff
+            departmentSection.style.display = 'block';
+            departmentSelect.required = true;
+        }
+
+        // Clear identifier when role changes
+        identifierInput.value = '';
+        identifierError.textContent = '';
+    }
+
+    // Event listener for role changes
+    roleSelect.addEventListener('change', updateFormFields);
+
+    // Initial form setup
+    updateFormFields();
+
+    // Validation Functions
     function validateIdentifierFormat(identifier, roleId) {
         const studentPattern = /^\d{4}-\d{5}$/;
         const staffPattern = /^\d{9}$/;
@@ -279,11 +386,9 @@ document.addEventListener('DOMContentLoaded', function() {
         let value = input.value.replace(/\D/g, ''); // Remove non-digits
 
         if (roleId == '3' && value.length >= 4) {
-            // Format as 0000-00000 for students
             value = value.substr(0, 4) + '-' + value.substr(4, 5);
         }
         
-        // Limit length based on role
         if (roleId == '3') {
             value = value.substr(0, 10); // 9 digits + 1 dash
         } else if (roleId == '2') {
@@ -293,56 +398,71 @@ document.addEventListener('DOMContentLoaded', function() {
         input.value = value;
     }
 
-    // Add event listeners
-    identifierInput.addEventListener('input', function() {
-        formatIdentifier(this, roleSelect.value);
-        const error = validateIdentifierFormat(this.value, roleSelect.value);
-        identifierError.textContent = error;
-    });
-
-    roleSelect.addEventListener('change', function() {
-        identifierInput.value = ''; // Clear identifier when role changes
-        identifierError.textContent = '';
-    });
-
-    const emailInput = document.getElementById('email');
-    const emailError = document.getElementById('emailError');
-
     function validateEmailFormat(email) {
-        // Basic email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return 'Please enter a valid email address';
         }
-
-        // WMSU domain validation
         if (!email.toLowerCase().endsWith('@wmsu.edu.ph')) {
             return 'Please use a valid WMSU email address (@wmsu.edu.ph)';
         }
-
         return '';
     }
 
-    // Real-time validation as user types
-    emailInput.addEventListener('input', function() {
-        const email = this.value.trim();
-        const error = validateEmailFormat(email);
-        emailError.textContent = error;
+    // Real-time ID validation
+    identifierInput.addEventListener('input', async function() {
+        formatIdentifier(this, roleSelect.value);
+        const identifier = this.value.trim();
+        const roleId = roleSelect.value;
+
+        // Check format first
+        const formatError = validateIdentifierFormat(identifier, roleId);
+        if (formatError) {
+            identifierError.textContent = formatError;
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+            return;
+        }
+
+        // Check for duplicates if format is correct
+        const correctLength = (roleId == '3' && identifier.length === 10) || 
+                            (roleId == '2' && identifier.length === 9);
         
-        // Add or remove invalid class for styling
-        if (error) {
-            emailInput.classList.add('is-invalid');
-            emailInput.classList.remove('is-valid');
-        } else {
-            emailInput.classList.remove('is-invalid');
-            emailInput.classList.add('is-valid');
+        if (correctLength) {
+            try {
+                const response = await fetch('check_identifier.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `identifier=${encodeURIComponent(identifier)}&role_id=${encodeURIComponent(roleId)}`
+                });
+                
+                const result = await response.json();
+                identifierError.textContent = result.valid ? '' : result.message;
+                this.classList.toggle('is-invalid', !result.valid);
+                this.classList.toggle('is-valid', result.valid);
+            } catch (error) {
+                console.error('Error checking identifier:', error);
+            }
         }
     });
 
-    // Check for duplicate email when focus leaves the field
-    emailInput.addEventListener('blur', async function() {
+    // Real-time email validation
+    emailInput.addEventListener('input', async function() {
         const email = this.value.trim();
-        if (email && !validateEmailFormat(email)) {
+        
+        // Check format first
+        const formatError = validateEmailFormat(email);
+        if (formatError) {
+            emailError.textContent = formatError;
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+            return;
+        }
+
+        // Check for duplicates if format is correct
+        if (email.toLowerCase().endsWith('@wmsu.edu.ph')) {
             try {
                 const response = await fetch('check_email.php', {
                     method: 'POST',
@@ -353,11 +473,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 const result = await response.json();
-                if (!result.valid) {
-                    emailError.textContent = result.message;
-                    emailInput.classList.add('is-invalid');
-                    emailInput.classList.remove('is-valid');
-                }
+                emailError.textContent = result.valid ? '' : result.message;
+                this.classList.toggle('is-invalid', !result.valid);
+                this.classList.toggle('is-valid', result.valid);
             } catch (error) {
                 console.error('Error checking email:', error);
             }
