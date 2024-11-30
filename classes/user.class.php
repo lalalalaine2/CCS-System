@@ -107,4 +107,33 @@ class User
         }
     }
 
+    public function validateEmail($email) {
+        try {
+            // Check email format and domain
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return ['valid' => false, 'message' => 'Please enter a valid email address'];
+            }
+
+            // Check if it's a WMSU email
+            if (!preg_match('/@wmsu\.edu\.ph$/', $email)) {
+                return ['valid' => false, 'message' => 'Please use a valid WMSU email address (@wmsu.edu.ph)'];
+            }
+
+            // Check if email already exists
+            $sql = "SELECT email FROM user WHERE email = :email";
+            $query = $this->db->connect()->prepare($sql);
+            $query->bindParam(':email', $email);
+            $query->execute();
+
+            if ($query->fetch()) {
+                return ['valid' => false, 'message' => 'This email is already registered'];
+            }
+
+            return ['valid' => true, 'message' => ''];
+        } catch (PDOException $e) {
+            error_log("Email validation error: " . $e->getMessage());
+            return ['valid' => false, 'message' => 'An error occurred during validation'];
+        }
+    }
+
 }
