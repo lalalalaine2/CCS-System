@@ -1,0 +1,60 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #0C380D;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+}
+
+* {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.form-signin {
+    background-color: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    margin: auto;
+}
+
+.logo-section {
+    margin-bottom: 2rem;
+}
+
+.logo-section p {
+    font-weight: 600;
+    color: #333;
+    font-size: 1rem;
+    margin-top: 1rem;
+}
+
+.form-floating {
+    margin-bottom: 1rem;
+}
+
+.form-control:focus {
+    border-color: #0C380D;
+    box-shadow: 0 0 0 0.25rem rgba(12, 56, 13, 0.25);
+}
+
+.btn-primary {
+    background-color: #0C380D;
+    border-color: #0C380D;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0A2C0A;
+    border-color: #0A2C0A;
+}
+
+a {
+    color: #0C380D;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #0A2C0A;
+    text-decoration: underline;
+}

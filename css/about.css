@@ -1,0 +1,145 @@
+body {
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+}
+
+
+.about-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    min-height: calc(100vh - 200px); /* Adjust based on your navbar height */
+}
+
+.about-content {
+    background-color: rgba(38, 109, 40, 0.95);
+    border-radius: 8px;
+    padding: 40px;
+    max-width: 800px;
+    width: 100%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.about-content h1 {
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 30px;
+    font-weight: bold;
+    font-size: 2.5rem;
+}
+
+.description {
+    color: #ffffff;
+    line-height: 1.6;
+}
+
+.description p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.description ul {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.description li {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .about-content {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+
+    .about-content h1 {
+        font-size: 2rem;
+    }
+
+    .description p, 
+    .description li {
+        font-size: 1rem;
+    }
+}
+
+.navbar {
+    background-color: #0C380D;
+    padding: 5px;
+    margin: 0;
+}
+
+.navigation {
+    padding: 10px 20px;
+}
+
+.nav-links ul {
+    display: flex;
+    list-style: none;
+    gap: 50px;
+    margin: 0;
+    padding: 1rem;
+}
+
+.nav-links li {
+    font-size: 16px;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-links a:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logout-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: white;
+    text-decoration: none;
+}
+
+.logout-button:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Icons */
+.lni {
+    font-size: 20px;
+}
+
+/* Logo */
+.navbar img {
+    width: 50px;
+    height: 50px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-links ul {
+        gap: 20px;
+    }
+    
+    .nav-links li {
+        font-size: 16px;
+    }
+    
+    .navigation {
+        padding: 10px;
+    }
+}
