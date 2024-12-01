@@ -86,6 +86,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $otherErr = "Department is required for staff!";
         }
 
+        // Add this new validation
+        $identifierValidation = $userObj->validateIdentifier($identifier, $role_id);
+        if (!$identifierValidation['valid']) {
+            $identifierErr = $identifierValidation['message'];
+            throw new Exception($identifierErr);
+        }
+
+        // Add email validation
+        $emailValidation = $userObj->validateEmail($email);
+        if (!$emailValidation['valid']) {
+            $emailErr = $emailValidation['message'];
+            throw new Exception($emailErr);
+        }
+
         // Check if there are validation errors
         if (!empty($first_nameErr) || !empty($last_nameErr) || !empty($usernameErr) || !empty($passwordErr) || !empty($role_idErr) || !empty($emailErr) || !empty($otherErr)) {
             throw new Exception("Validation errors occurred.");
@@ -244,12 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
 
                 <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Email</label>
+                    <label for="email" class="form-label">Email</label>
                     <input type="email" class="form-control" id="email" name="email"
                            value="<?= htmlspecialchars($email) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
+                    <small class="form-text text-muted">Use your WMSU email: username@wmsu.edu.ph</small>
+                    <div class="text-danger" id="emailError"></div>
                 </div>
 
                 <hr>
@@ -280,6 +293,120 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const identifierInput = document.getElementById('identifier');
+    const roleSelect = document.getElementById('role');
+    const identifierError = document.createElement('div');
+    identifierError.className = 'text-danger mt-1';
+    identifierInput.parentNode.appendChild(identifierError);
+
+    function validateIdentifierFormat(identifier, roleId) {
+        const studentPattern = /^\d{4}-\d{5}$/;
+        const staffPattern = /^\d{9}$/;
+
+        if (roleId == '3') { // Student
+            if (!studentPattern.test(identifier)) {
+                return 'Student ID must be in 0000-00000 format';
+            }
+        } else if (roleId == '2') { // Staff
+            if (!staffPattern.test(identifier)) {
+                return 'Staff ID must be 9 digits without spaces or dashes';
+            }
+        }
+        return '';
+    }
+
+    function formatIdentifier(input, roleId) {
+        let value = input.value.replace(/\D/g, ''); // Remove non-digits
+
+        if (roleId == '3' && value.length >= 4) {
+            // Format as 0000-00000 for students
+            value = value.substr(0, 4) + '-' + value.substr(4, 5);
+        }
+        
+        // Limit length based on role
+        if (roleId == '3') {
+            value = value.substr(0, 10); // 9 digits + 1 dash
+        } else if (roleId == '2') {
+            value = value.substr(0, 9); // 9 digits
+        }
+
+        input.value = value;
+    }
+
+    // Add event listeners
+    identifierInput.addEventListener('input', function() {
+        formatIdentifier(this, roleSelect.value);
+        const error = validateIdentifierFormat(this.value, roleSelect.value);
+        identifierError.textContent = error;
+    });
+
+    roleSelect.addEventListener('change', function() {
+        identifierInput.value = ''; // Clear identifier when role changes
+        identifierError.textContent = '';
+    });
+
+    const emailInput = document.getElementById('email');
+    const emailError = document.getElementById('emailError');
+
+    function validateEmailFormat(email) {
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return 'Please enter a valid email address';
+        }
+
+        // WMSU domain validation
+        if (!email.toLowerCase().endsWith('@wmsu.edu.ph')) {
+            return 'Please use a valid WMSU email address (@wmsu.edu.ph)';
+        }
+
+        return '';
+    }
+
+    // Real-time validation as user types
+    emailInput.addEventListener('input', function() {
+        const email = this.value.trim();
+        const error = validateEmailFormat(email);
+        emailError.textContent = error;
+        
+        // Add or remove invalid class for styling
+        if (error) {
+            emailInput.classList.add('is-invalid');
+            emailInput.classList.remove('is-valid');
+        } else {
+            emailInput.classList.remove('is-invalid');
+            emailInput.classList.add('is-valid');
+        }
+    });
+
+    // Check for duplicate email when focus leaves the field
+    emailInput.addEventListener('blur', async function() {
+        const email = this.value.trim();
+        if (email && !validateEmailFormat(email)) {
+            try {
+                const response = await fetch('check_email.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'email=' + encodeURIComponent(email)
+                });
+                
+                const result = await response.json();
+                if (!result.valid) {
+                    emailError.textContent = result.message;
+                    emailInput.classList.add('is-invalid');
+                    emailInput.classList.remove('is-valid');
+                }
+            } catch (error) {
+                console.error('Error checking email:', error);
+            }
+        }
+    });
+});
+</script>
 <?php include_once '../includes/_footer.php'; ?>
 <script>
 document.getElementById('role').addEventListener('change', function() {

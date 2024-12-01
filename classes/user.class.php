@@ -15,7 +15,12 @@ class User
 
     protected $db;
 
+<<<<<<< HEAD
     private $role_id;
+=======
+    const STUDENT_ID_PATTERN = '/^\d{4}-\d{5}$/';
+    const STAFF_ID_PATTERN = '/^\d{9}$/';
+>>>>>>> 0170f39e89d0deabc3ca13d394751958af93c61e
 
     function __construct()
     {
@@ -85,6 +90,7 @@ class User
         }
     }
 
+<<<<<<< HEAD
     public function getCourseOptions() {
         try {
             $sql = "SELECT course_name as name FROM course ORDER BY course_name";
@@ -125,6 +131,71 @@ class User
 
     public function setRoleId($role_id) {
         $this->role_id = $role_id;
+=======
+    public function validateIdentifier($identifier, $role_id) {
+        try {
+            // First check format based on role
+            if ($role_id == 3) { // Student
+                if (!preg_match(self::STUDENT_ID_PATTERN, $identifier)) {
+                    return ['valid' => false, 'message' => 'Student ID must be in 0000-00000 format'];
+                }
+            } else if ($role_id == 2) { // Staff
+                if (!preg_match(self::STAFF_ID_PATTERN, $identifier)) {
+                    return ['valid' => false, 'message' => 'Staff ID must be 9 digits without spaces or dashes'];
+                }
+            }
+
+            // Check if ID exists for the same role
+            $sql = "SELECT u.identifier, a.role_id 
+                   FROM user u 
+                   JOIN account a ON u.id = a.user_id 
+                   WHERE u.identifier = :identifier AND a.role_id = :role_id";
+
+            $query = $this->db->connect()->prepare($sql);
+            $query->bindParam(':identifier', $identifier);
+            $query->bindParam(':role_id', $role_id);
+            $query->execute();
+
+            if ($query->fetch()) {
+                $roleType = ($role_id == 3) ? 'student' : 'staff';
+                return ['valid' => false, 'message' => "This ID is already registered as a {$roleType}"];
+            }
+
+            return ['valid' => true, 'message' => ''];
+        } catch (PDOException $e) {
+            error_log("ID validation error: " . $e->getMessage());
+            return ['valid' => false, 'message' => 'An error occurred during validation'];
+        }
+    }
+
+    public function validateEmail($email) {
+        try {
+            // Check email format and domain
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return ['valid' => false, 'message' => 'Please enter a valid email address'];
+            }
+
+            // Check if it's a WMSU email
+            if (!preg_match('/@wmsu\.edu\.ph$/', $email)) {
+                return ['valid' => false, 'message' => 'Please use a valid WMSU email address (@wmsu.edu.ph)'];
+            }
+
+            // Check if email already exists
+            $sql = "SELECT email FROM user WHERE email = :email";
+            $query = $this->db->connect()->prepare($sql);
+            $query->bindParam(':email', $email);
+            $query->execute();
+
+            if ($query->fetch()) {
+                return ['valid' => false, 'message' => 'This email is already registered'];
+            }
+
+            return ['valid' => true, 'message' => ''];
+        } catch (PDOException $e) {
+            error_log("Email validation error: " . $e->getMessage());
+            return ['valid' => false, 'message' => 'An error occurred during validation'];
+        }
+>>>>>>> 0170f39e89d0deabc3ca13d394751958af93c61e
     }
 
 }
