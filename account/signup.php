@@ -5,11 +5,15 @@ require_once '../tools/functions.php';
 require_once '../classes/user.class.php';
 require_once '../classes/account.class.php';
 require_once '../classes/role.class.php';
+require_once '../classes/course.class.php';
+require_once '../classes/department.class.php';
 
 session_start();
 $userObj = new User();
 $accountObj = new Account();
 $roleObj = new Role();
+$courseObj = new Course();
+$departmentObj = new Department();
 $roles = $roleObj->renderAllRoles(); // Fetch all roles for dropdown
 
 // Initialize variables
@@ -122,8 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Provide feedback to the user (optional, do not reveal sensitive info in production)
         $usernameErr = "An error occurred: " . $e->getMessage();
     }
-}
-?>
+}?>
 
 <link rel="stylesheet" href="../css/signup.css">
 <body class="d-flex align-items-center justify-content-center container" style="height: 100vh">
@@ -176,13 +179,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
 
 
-                <div class="col-md-6">
-                    <label for="validationCustom01" class="form-label">Course/Department</label>
-                    <input type="text" class="form-control" id="other" name="other"
-                           value="<?= htmlspecialchars($other) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
+                <div class="col-md-3">
+                    <label for="course" class="form-label">Course</label>
+                    <select class="form-control" id="course" name="other">
+                        <option value="" disabled selected>Select Course</option>
+                        <?php
+                        $courses = $courseObj->getAllCourses();
+                        echo "<!-- Debug: " . print_r($courses, true) . " -->"; // Debug output
+                        foreach ($courses as $course) {
+                            $selected = ($other == $course['course_name']) ? 'selected' : '';
+                            echo "<option value='{$course['course_name']}' {$selected}>{$course['course_name']}</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <div class="col-md-3" >
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-control" id="department" name="other">
+                        <option value="" disabled selected>Select Department</option>
+                        <?php
+                        $departments = $departmentObj->getAllDepartments();
+                        echo "<!-- Debug: " . print_r($departments, true) . " -->"; // Debug output
+                        foreach ($departments as $department) {
+                            $selected = ($other == $department['department_name']) ? 'selected' : '';
+                            echo "<option value='{$department['department_name']}' {$selected}>{$department['department_name']}</option>";
+                        }
+                        ?>
+                    </select>
                 </div>
 
                 <div class="col-md-3">
@@ -239,6 +263,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 </main>
 <?php include_once '../includes/_footer.php'; ?>
+<script>
+document.getElementById('role').addEventListener('change', function() {
+    const selectedRole = this.value;
+    console.log('Selected role:', selectedRole);
+    
+    const courseDiv = document.getElementById('courseDiv');
+    const departmentDiv = document.getElementById('departmentDiv');
+    const courseSelect = document.getElementById('course');
+    const departmentSelect = document.getElementById('department');
+    
+    console.log('Found courseDiv:', courseDiv);
+    console.log('Found departmentDiv:', departmentDiv);
+    console.log('Found courseSelect:', courseSelect);
+    console.log('Found departmentSelect:', departmentSelect);
+    
+    // Hide both divs initially
+    courseDiv.style.display = 'none';
+    departmentDiv.style.display = 'none';
+    
+    // Remove required attribute from both
+    courseSelect.removeAttribute('required');
+    departmentSelect.removeAttribute('required');
+    
+    // Show appropriate div based on role
+    if (selectedRole === '3') { // Student
+        courseDiv.style.display = 'block';
+        courseSelect.setAttribute('required', 'required');
+        console.log('Showing course dropdown'); // Debug log
+    } else if (selectedRole === '2') { // Staff
+        departmentDiv.style.display = 'block';
+        departmentSelect.setAttribute('required', 'required');
+        console.log('Showing department dropdown'); // Debug log
+    }
+});
+
+// Trigger change event on page load if role is selected
+window.addEventListener('load', function() {
+    const roleSelect = document.getElementById('role');
+    if (roleSelect.value) {
+        roleSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
 </body>
 
 </html>

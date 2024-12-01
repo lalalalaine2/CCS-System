@@ -68,4 +68,28 @@ class User
         }
     }
 
+    public function getCourseOptions() {
+        try {
+            $sql = "SELECT course_name as name FROM course ORDER BY course_name";
+            $stmt = $this->db->connect()->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error getting course options: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getDepartmentOptions() {
+        try {
+            $sql = "SELECT department_name as name FROM department ORDER BY department_name";
+            $stmt = $this->db->connect()->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error getting department options: " . $e->getMessage());
+            return [];
+        }
+    }
+
 }
