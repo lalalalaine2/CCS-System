@@ -22,8 +22,17 @@ $identifierErr = $first_nameErr = $middle_nameErr = $last_nameErr = $usernameErr
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        // Clean and validate input
+        // Validate identifier
         $identifier = clean_input($_POST['identifier']);
+        if (empty($identifier)) {
+            $identifierErr = "ID Number is required!";
+            throw new Exception("ID Number is required!");
+        } elseif ($userObj->identifierExists($identifier)) {
+            $identifierErr = "This ID Number is already registered!";
+            throw new Exception("This ID Number is already registered!");
+        }
+
+        // Clean and validate input
         $first_name = clean_input($_POST['firstname']);
         $middle_name = clean_input($_POST['middlename']);
         $last_name = clean_input($_POST['lastname']);
@@ -96,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $userObj->department = $other;
         }
 
-
+        // Before storing the user
+        $userObj->setRoleId($role_id);
 
         // Save the user and get the inserted ID
         $userId = $userObj->store();
@@ -146,12 +156,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <hr>
             <form class="row g-3" action="signup.php" method="post">
                 <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">ID Number</label>
-                    <input type="text" class="form-control" id="identifier" name="identifier"
-                           value="<?= htmlspecialchars($identifier) ?>" required>
+                    <label for="validationCustom01" class="form-label">Role</label>
+                    <select class="form-control" id="role" name="role" required>
+                        <option value="" disabled selected>Select a role</option>
+                        <?php
+                        foreach ($roles as $r) {
+                            $isSelected = ($role_id == $r['name']) ? 'selected' : '';
+                            echo "<option value=\"{$r['id']}\" $isSelected>{$r['name']}</option>";
+                        }
+                        ?>
+                    </select>
                     <div class="valid-feedback">
                         Looks good!
                     </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="validationCustom01" class="form-label">ID Number</label>
+                    <input type="text" 
+                           class="form-control <?php echo !empty($identifierErr) ? 'is-invalid' : ''; ?>" 
+                           id="identifier" 
+                           name="identifier"
+                           value="<?= htmlspecialchars($identifier) ?>" 
+                           required>
+                    <?php if (!empty($identifierErr)): ?>
+                        <div class="invalid-feedback">
+                            <?php echo $identifierErr; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="valid-feedback">
+                            Looks good!
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-3">
                     <label for="validationCustom01" class="form-label">First name</label>
@@ -172,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="col-md-3">
                     <label for="validationCustom01" class="form-label">Last name</label>
                     <input type="text" class="form-control" id="lastname" name="lastname"
-                           value="<?= htmlspecialchars($middle_name) ?>" required>
+                           value="<?= htmlspecialchars($last_name) ?>" required>
                     <div class="valid-feedback">
                         Looks good!
                     </div>
@@ -185,25 +221,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <option value="" disabled selected>Select Course</option>
                         <?php
                         $courses = $courseObj->getAllCourses();
-                        echo "<!-- Debug: " . print_r($courses, true) . " -->"; // Debug output
                         foreach ($courses as $course) {
-                            $selected = ($other == $course['course_name']) ? 'selected' : '';
-                            echo "<option value='{$course['course_name']}' {$selected}>{$course['course_name']}</option>";
+                            $selected = ($other == $course['id']) ? 'selected' : '';
+                            echo "<option value='{$course['id']}' {$selected}>{$course['course_name']}</option>";
                         }
                         ?>
                     </select>
                 </div>
 
-                <div class="col-md-3" >
+                <div class="col-md-3">
                     <label for="department" class="form-label">Department</label>
                     <select class="form-control" id="department" name="other">
                         <option value="" disabled selected>Select Department</option>
                         <?php
                         $departments = $departmentObj->getAllDepartments();
-                        echo "<!-- Debug: " . print_r($departments, true) . " -->"; // Debug output
                         foreach ($departments as $department) {
-                            $selected = ($other == $department['department_name']) ? 'selected' : '';
-                            echo "<option value='{$department['department_name']}' {$selected}>{$department['department_name']}</option>";
+                            $selected = ($other == $department['id']) ? 'selected' : '';
+                            echo "<option value='{$department['id']}' {$selected}>{$department['department_name']}</option>";
                         }
                         ?>
                     </select>
@@ -213,22 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="validationCustom01" class="form-label">Email</label>
                     <input type="email" class="form-control" id="email" name="email"
                            value="<?= htmlspecialchars($email) ?>" required>
-                    <div class="valid-feedback">
-                        Looks good!
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <label for="validationCustom01" class="form-label">Role</label>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="" disabled selected>Select a role</option>
-                        <?php
-                        foreach ($roles as $r) {
-                            $isSelected = ($role_id == $r['name']) ? 'selected' : '';
-                            echo "<option value=\"{$r['id']}\" $isSelected>{$r['name']}</option>";
-                        }
-                        ?>
-                    </select>
                     <div class="valid-feedback">
                         Looks good!
                     </div>
@@ -266,35 +284,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <script>
 document.getElementById('role').addEventListener('change', function() {
     const selectedRole = this.value;
-    console.log('Selected role:', selectedRole);
-    
-    const courseDiv = document.getElementById('courseDiv');
-    const departmentDiv = document.getElementById('departmentDiv');
     const courseSelect = document.getElementById('course');
     const departmentSelect = document.getElementById('department');
     
-    console.log('Found courseDiv:', courseDiv);
-    console.log('Found departmentDiv:', departmentDiv);
-    console.log('Found courseSelect:', courseSelect);
-    console.log('Found departmentSelect:', departmentSelect);
+    // Reset both selects
+    courseSelect.value = '';
+    departmentSelect.value = '';
     
-    // Hide both divs initially
-    courseDiv.style.display = 'none';
-    departmentDiv.style.display = 'none';
+    // Hide both initially
+    courseSelect.parentElement.style.display = 'none';
+    departmentSelect.parentElement.style.display = 'none';
     
     // Remove required attribute from both
     courseSelect.removeAttribute('required');
     departmentSelect.removeAttribute('required');
     
-    // Show appropriate div based on role
+    // Show appropriate select based on role
     if (selectedRole === '3') { // Student
-        courseDiv.style.display = 'block';
+        courseSelect.parentElement.style.display = 'block';
         courseSelect.setAttribute('required', 'required');
-        console.log('Showing course dropdown'); // Debug log
+        departmentSelect.name = ''; // Remove name attribute from department
+        courseSelect.name = 'other'; // Set name attribute for course
     } else if (selectedRole === '2') { // Staff
-        departmentDiv.style.display = 'block';
+        departmentSelect.parentElement.style.display = 'block';
         departmentSelect.setAttribute('required', 'required');
-        console.log('Showing department dropdown'); // Debug log
+        courseSelect.name = ''; // Remove name attribute from course
+        departmentSelect.name = 'other'; // Set name attribute for department
     }
 });
 

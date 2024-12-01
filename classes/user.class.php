@@ -15,6 +15,8 @@ class User
 
     protected $db;
 
+    private $role_id;
+
     function __construct()
     {
         $this->db = new Database();
@@ -23,30 +25,45 @@ class User
     public function store()
     {
         try {
-            $sql = "INSERT INTO user (identifier, firstname, middlename, lastname, email, course, department) 
-                    VALUES (:identifier, :firstname, :middlename, :lastname, :email, :course, :department)";
+            $sql = "INSERT INTO user (
+                identifier, 
+                firstname, 
+                middlename, 
+                lastname, 
+                email, 
+                course_id, 
+                department_id
+            ) VALUES (
+                :identifier,
+                :firstname,
+                :middlename,
+                :lastname,
+                :email,
+                :course_id,
+                :department_id
+            )";
 
-            $query = $this->db->connect()->prepare($sql);
+            $stmt = $this->db->connect()->prepare($sql);
+            
+            // Convert course/department to IDs based on role
+            $course_id = ($this->role_id == 3) ? $this->course : null;
+            $department_id = ($this->role_id == 2) ? $this->department : null;
 
-            $query->bindParam(':identifier', $this->identifier, PDO::PARAM_STR);
-            $query->bindParam(':firstname', $this->firstname, PDO::PARAM_STR);
-            $query->bindParam(':middlename', $this->middlename, PDO::PARAM_STR);
-            $query->bindParam(':lastname', $this->lastname, PDO::PARAM_STR);
-            $query->bindParam(':email', $this->email, PDO::PARAM_STR);
-            $query->bindParam(':course', $this->course, PDO::PARAM_STR);
-            $query->bindParam(':department', $this->department, PDO::PARAM_STR);
+            $stmt->bindParam(':identifier', $this->identifier);
+            $stmt->bindParam(':firstname', $this->firstname);
+            $stmt->bindParam(':middlename', $this->middlename);
+            $stmt->bindParam(':lastname', $this->lastname);
+            $stmt->bindParam(':email', $this->email);
+            $stmt->bindParam(':course_id', $course_id);
+            $stmt->bindParam(':department_id', $department_id);
 
-            if ($query->execute()) {
-                // Return the ID of the newly inserted record
-                return $this->db->connect()->lastInsertId();
-            } else {
-                // Log any execution errors
-                error_log("Failed to execute insert query: " . implode(", ", $query->errorInfo()));
-                return false;
-            }
+            $stmt->execute();
+            
+            // Get the last inserted ID from the PDO connection
+            return $this->db->connect()->lastInsertId();
+            
         } catch (PDOException $e) {
-            // Log the error
-            error_log("Failed to store user: " . $e->getMessage());
+            error_log("Error in User::store: " . $e->getMessage());
             return false;
         }
     }
@@ -90,6 +107,24 @@ class User
             error_log("Error getting department options: " . $e->getMessage());
             return [];
         }
+    }
+
+    public function identifierExists($identifier) {
+        try {
+            $sql = "SELECT COUNT(*) FROM user WHERE identifier = :identifier";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':identifier', $identifier);
+            $stmt->execute();
+            
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking identifier: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function setRoleId($role_id) {
+        $this->role_id = $role_id;
     }
 
 }
